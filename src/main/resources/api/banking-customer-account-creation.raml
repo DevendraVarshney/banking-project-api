@@ -1,0 +1,48 @@
+#%RAML 1.0
+title: BANKING-Customer-account-creation
+description: API for creating new account in Bank.
+version: v1
+protocols:
+  - HTTPS
+  - HTTP
+securitySchemes:
+  secure: !include /Security/securityScheme.raml
+  
+/createAccount:
+  post:
+    queryParameters:
+      customerName:
+        required: true
+        maxLength: 45
+        minLength: 4
+      bank:
+        required: true
+        enum:
+          - ICICI
+          - AXIS
+          - HDFC
+          - SBI
+      accountType:
+        required: true
+        enum:
+          - saving
+          - current
+      branchName:
+        required: true
+        maxLength: 10
+        minLength: 4
+
+    body:
+      application/json:
+        type: !include /DataTypes/inputDataType.raml
+        example: !include /Examples/Request/InputReqExample.raml
+
+    responses:
+      201:
+        body:
+          application/json:
+            example: !include /Examples/Response/SuccessResExample.raml
+
+
+
+

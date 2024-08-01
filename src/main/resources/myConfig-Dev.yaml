@@ -1,0 +1,19 @@
+
+http:
+ port: "8081"
+ 
+db:
+ MySQL:
+   Host: "localhost"
+   Port: "3306"
+   User: "root"
+   Password: "Reward@90"
+   Database: "Banking"
+  
+email:
+ config:
+   Host: "smtp.gmail.com"
+   Port: "587"
+   User: "devendra.varshney.ind@gmail.com"
+   Password: "kqvedlrfsichqxmn"
+   
