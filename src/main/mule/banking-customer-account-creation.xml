@@ -3,11 +3,11 @@
 http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
 http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd">
     <http:listener-config name="banking-customer-account-creation-httpListenerConfig">
-        <http:listener-connection host="0.0.0.0" port="8081" />
+        <http:listener-connection host="0.0.0.0" port="${http.port}" />
     </http:listener-config>
     <apikit:config name="banking-customer-account-creation-config" api="banking-customer-account-creation.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
     <db:config name="Database_Config" doc:name="Database Config" doc:id="92de612f-9476-418c-8766-03f4231eeabd" >
-		<db:my-sql-connection host="localhost" port="3306" user="root" password="Reward@90" database="banking" />
+		<db:my-sql-connection host="${db.mySQL.Host}" port="${db.mySQL.Port}" user="${db.mySQL.User}" password="${db.mySQL.Password}" database="${db.mySQL.Database}" />
 	</db:config>
 	<email:smtp-config name="Email_SMTP" doc:name="Email SMTP" doc:id="34c59622-1745-4ce9-8487-c2f6d13967ef" >
 		<email:smtp-connection host="${email.config.Host}" port="${email.config.Port}" user="${email.config.User}" password="${email.config.Password}" >

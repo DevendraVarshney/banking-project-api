@@ -3,7 +3,7 @@ http:
  port: "8081"
  
 db:
- MySQL:
+ mySQL:
    Host: "localhost"
    Port: "3306"
    User: "root"
