@@ -1,14 +1,15 @@
-
 http:
  port: "8081"
  
 db:
  mySQL:
-   Host: "localhost"
-   Port: "3306"
-   User: "root"
-   Password: "Reward@90"
-   Database: "Banking"
+   accountName: "la02440.ap-southeast-1"
+   warehouse: "COMPUTE_WH"
+   database: "Banking"
+   schema: "BFS"
+   user: "DK90"
+   password: "Reward890"
+   role: "ACCOUNTADMIN"
   
 email:
  config:

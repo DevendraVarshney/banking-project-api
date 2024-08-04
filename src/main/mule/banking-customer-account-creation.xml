@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+<mule xmlns:snowflake="http://www.mulesoft.org/schema/mule/snowflake" xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
 http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
-http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd">
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd
+http://www.mulesoft.org/schema/mule/snowflake http://www.mulesoft.org/schema/mule/snowflake/current/mule-snowflake.xsd">
     <http:listener-config name="banking-customer-account-creation-httpListenerConfig">
         <http:listener-connection host="0.0.0.0" port="${http.port}" />
     </http:listener-config>
     <apikit:config name="banking-customer-account-creation-config" api="banking-customer-account-creation.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
-    <db:config name="Database_Config" doc:name="Database Config" doc:id="92de612f-9476-418c-8766-03f4231eeabd" >
-		<db:my-sql-connection host="${db.mySQL.Host}" port="${db.mySQL.Port}" user="${db.mySQL.User}" password="${db.mySQL.Password}" database="${db.mySQL.Database}" />
-	</db:config>
 	<email:smtp-config name="Email_SMTP" doc:name="Email SMTP" doc:id="34c59622-1745-4ce9-8487-c2f6d13967ef" >
 		<email:smtp-connection host="${email.config.Host}" port="${email.config.Port}" user="${email.config.User}" password="${email.config.Password}" >
 			<email:properties >
@@ -17,6 +15,9 @@ http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/em
 		</email:smtp-connection>
 	</email:smtp-config>
 	<configuration-properties doc:name="Configuration properties" doc:id="62f40f01-e45e-4480-a8f2-82d6790a8fbb" file="myConfig-Dev.yaml" />
+	<snowflake:snowflake-config name="Snowflake_Config" doc:name="Snowflake Config" doc:id="b1fb2767-d0db-49fd-91c5-8a57e3314ef1" >
+		<snowflake:snowflake-connection accountName="${db.mySQL.accountName}" warehouse="${db.mySQL.warehouse}" database="${db.mySQL.database}" schema="${db.mySQL.schema}" user="${db.mySQL.user}" password="${db.mySQL.password}" role="${db.mySQL.role}" />
+	</snowflake:snowflake-config>
 	<flow name="banking-customer-account-creation-main">
         <http:listener config-ref="banking-customer-account-creation-httpListenerConfig" path="/api/*">
             <http:response statusCode="#[vars.httpStatus default 200]">
@@ -161,14 +162,14 @@ output application/json
 		<set-variable value="#[payload.accountNum]" doc:name="accountNum" doc:id="5f237fa9-8c6a-4c90-b96a-9b52abe52a53" variableName="accountNum"/>
 		<set-variable doc:name="empty List" doc:id="991345e4-4778-4bce-b5c3-a478d97dc58f" variableName="inpPayload" value="#[[]]"/>
 		<set-variable value="#[%dw 2.0&#10;output application/json&#10;---&#10;vars.inpPayload &lt;&lt; payload]" doc:name="add the inputPayload" doc:id="9f1f4465-148c-4368-988f-567ceadea9a9" variableName="inpPayload"/>
-		<db:select doc:name="Select" doc:id="6dacebea-0cf7-4de8-8b58-0a1059d20e5e" config-ref="Database_Config">
-			<db:sql ><![CDATA[select custAccNum,bankName from bank_Transactions 
-where custAccNum =:custAccNum and bankName =:bankName]]></db:sql>
-			<db:input-parameters ><![CDATA[#[{
+		<snowflake:select doc:name="Select" doc:id="11394ecc-9764-44f2-bc02-01e7e6435083" config-ref="Snowflake_Config">
+			<snowflake:sql ><![CDATA[select custAccNum,bankName from bank_Transactions 
+where custAccNum =:custAccNum and bankName =:bankName]]></snowflake:sql>
+			<snowflake:input-parameters ><![CDATA[#[{
 	"custAccNum": payload.accountNum,
 	"bankName": vars.bank
-}]]]></db:input-parameters>
-		</db:select>
+}]]]></snowflake:input-parameters>
+		</snowflake:select>
 		<choice doc:name="Choice" doc:id="fb849a94-5729-41c4-8e43-09b2ba555ddd" >
 			<when expression="#[sizeOf(payload)&gt;=1]">
 				<ee:transform doc:name="Transform Message" doc:id="a9e0ca99-88ec-4b0a-b001-cf52f2ab7f94" >
@@ -187,14 +188,14 @@ output application/json
 				<logger level="INFO" doc:name="Already existing customer Log" doc:id="4c99f672-cd32-43ea-99a0-ae1e16674e2d" message="----------Account is already existed for the input account number-------------"/>
 			</when>
 			<otherwise >
-				<db:insert doc:name="Insert" doc:id="923342d7-d2c5-4b22-862f-7e635fb663a8" config-ref="Database_Config">
-					<db:sql ><![CDATA[insert into Bank_Transactions 
+				<snowflake:insert doc:name="Insert" doc:id="cf92e5d5-07eb-4789-aed4-8da21587a411" config-ref="Snowflake_Config" >
+					<snowflake:sql ><![CDATA[insert into Bank_Transactions 
 (custName, custAccNum, atmPin, bankName, accountType, ifscCode,
 branchName, transactionTimeStamp, mailId, phoneNumber) 
 values 
 (:custName, :custAccNum, :atmPin, :bankName, :accountType, :ifscCode,
-:branchName, :transactionTimeStamp, :mailId, :phoneNumber)]]></db:sql>
-					<db:input-parameters ><![CDATA[#[{
+:branchName, :transactionTimeStamp, :mailId, :phoneNumber)]]></snowflake:sql>
+					<snowflake:input-parameters ><![CDATA[#[{
 	(vars.inpPayload map {
 		
 	"custName": vars.customerName,
@@ -209,8 +210,8 @@ values
 	"phoneNumber": $.contact
 	}
 	)
-}]]]></db:input-parameters>
-				</db:insert>
+}]]]></snowflake:input-parameters>
+				</snowflake:insert>
 				<flow-ref doc:name="Flow Reference" doc:id="3e9207b3-c67d-40c0-bd7a-7bada2b5a392" name="banking-customer-email-creationFlow"/>
 				<ee:transform doc:name="Transform Message">
             <ee:message>
@@ -219,7 +220,7 @@ output application/json
 ---
 {
   SuccessResExample: {
-    "status": "“Account Created Successfully with Account Number " ++ vars.accountNum
+    "status": "Account Created Successfully with Account Number " ++ vars.accountNum
   }
 } as Object {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
             </ee:message>
