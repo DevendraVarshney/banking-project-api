@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:snowflake="http://www.mulesoft.org/schema/mule/snowflake"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/snowflake http://www.mulesoft.org/schema/mule/snowflake/current/mule-snowflake.xsd">
+	
+	<flow name="post:\withDraw:customer-bank-account-manaement-config">
+        <logger level="INFO" doc:name="CheckBalance" doc:id="68e57a52-407f-4715-aec1-a643198ddedd" message="----------check balance journey started---------"/>
+		<set-variable value="#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	accountNum: attributes.queryParams.accountNum,&#10;	accountType: attributes.queryParams.accountType,&#10;	atmPin: attributes.queryParams.atmPin,&#10;	bank: attributes.queryParams.bank,&#10;	amountToBeWithdraw: attributes.queryParams.amountToBeWithdraw&#10;}]" doc:name="InpPayload" doc:id="27b25ab0-41b8-45d1-b331-bc633f64b8dd" variableName="InpPayload"/>
+		<snowflake:select doc:name="Select" doc:id="69ab2fb0-b463-480a-8e7a-14b322b9191e" config-ref="Snowflake_Config">
+			<snowflake:sql ><![CDATA[SELECT * FROM BANK_TRANSACTIONS where custaccnum = :BankAccNum and bankName= :BankName;]]></snowflake:sql>
+			<snowflake:input-parameters ><![CDATA[#[{
+	"BankAccNum": vars.inpPayload.accountNum,
+	"BankName": vars.inpPayload.bank
+}]]]></snowflake:input-parameters>
+		</snowflake:select>
+		<choice doc:name="Choice" doc:id="c559e127-51d6-4eeb-a87d-b2a28e57c7ba" >
+			<when expression="#[sizeOf(payload) &gt;= 1 and payload.accountStatus[0] == 'Active']">
+				<logger level="INFO" doc:name="RecordFound" doc:id="0ddc9beb-3c5e-4595-9cef-d3dea8a7152b" message="------Record found---------"/>
+				<choice doc:name="Choice" doc:id="c66ba136-0647-4f91-b667-aa157fbfdefb" >
+					<when expression="#[vars.InpPayload.atmPin == payload.atmPin[0] and (payload.WRONGPIN[0] == 2 or payload.WRONGPIN[0] == 1 or payload.WRONGPIN[0] == 0) and payload.totalBalance[0] &gt; vars.inpPayload.amountToBeWithdraw[0] as Number]">
+						<snowflake:update doc:name="Update" doc:id="c513b4b3-7e11-4c3e-9077-2eafd88564a2" config-ref="Snowflake_Config" >
+							<snowflake:sql ><![CDATA[UPDATE BANK_TRANSACTIONS set totalBalance = :totalBalance where custaccnum = :BankAccNum and bankName = :BankName;]]></snowflake:sql>
+							<snowflake:input-parameters ><![CDATA[#[%dw 2.0
+output application/json
+---
+{
+	"BankAccNum": payload.CUSTACCNUM[0],
+	"BankName": payload.BANKNAME[0],
+	"totalBalance": payload.TOTALBALANCE[0] - vars.inpPayload.amountToBeWithdraw[0]
+}]]]></snowflake:input-parameters>
+						</snowflake:update>
+						<ee:transform doc:name="Show Balance">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  SuccessResExample: {
+    "status": "Amount " ++ vars.inpPayload.amountToBeWithdraw as Number ++  " is debited."
+  }
+} as Object {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+					
+</when>
+					<otherwise >
+						<logger level="INFO" doc:name="WrongPin" doc:id="8e359782-7e65-4991-87b3-2096b2025ee8" message="----------------Wrong ATM PIN--------------------"/>
+						<ee:transform doc:name="Transform Message" doc:id="524d2817-2da4-4b60-862e-dd275c22f254" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Status": "Incorrect ATM PIN"
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+					</otherwise>
+				</choice>
+			</when>
+			<when expression="#[sizeOf(payload) &gt;= 1 and payload.accountStatus[0] != 'Active']">
+				<logger level="INFO" doc:name="LockedAcc" doc:id="83748756-77a5-4806-a434-505bd61165a3" message="------------------Account is not active----------------------------"/>
+				<ee:transform doc:name="Account locked" doc:id="d53ad506-7f7f-4538-8267-abc3cbb60435" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Status": "Your account is not active, Please visit nearest branch."
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="IncorrectAcc" doc:id="a2d14682-c8fb-4dae-970d-4f5e542f1b2f" message="-----------Record not found-----------"/>
+				<ee:transform doc:name="Incorrect Account" doc:id="089ddb7f-9de7-4015-a6fe-28bc70a510f4" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Status": "Please check your Account Number, It is Incorrect"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+    
+</flow>
+	
+	</mule>

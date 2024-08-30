@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:snowflake="http://www.mulesoft.org/schema/mule/snowflake"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/snowflake http://www.mulesoft.org/schema/mule/snowflake/current/mule-snowflake.xsd">
+	
+	<flow name="put:\deposit:application\json:customer-bank-account-manaement-config">
+        <logger level="INFO" doc:name="Logger" doc:id="6af61872-d420-4e51-bf2c-4798027ba0f9" message="--------Depsit-amount-journey-started-----------"/>
+		<set-variable value="#[%dw 2.0&#10;output application/json&#10;---&#10;payload.depositAmount]" doc:name="InpAmount" doc:id="808148f5-eda0-4ef8-b303-77be0e01afaa" variableName="InpAmount"/>
+		<set-variable value="#[payload.accountNum]" doc:name="accountNumber" doc:id="bca6aa46-409e-4f6e-bdcf-f8c848687c52" variableName="accountNumber"/>
+		<snowflake:select doc:name="Select" doc:id="a7bc78b0-af66-4943-98d8-b09d9739dc61" config-ref="Snowflake_Config">
+			<snowflake:sql ><![CDATA[SELECT * FROM BANK_TRANSACTIONS where custaccnum = :BankAccNum and bankName= :BankName;]]></snowflake:sql>
+			<snowflake:input-parameters ><![CDATA[#[{
+	"BankAccNum": payload.accountNum,
+	"BankName": payload.bank
+}]]]></snowflake:input-parameters>
+		</snowflake:select>
+		<choice doc:name="Choice" doc:id="a9e17015-52f8-4d64-9a5c-d0470fb876c7" >
+			<when expression="#[sizeOf(payload)&gt;=1]">
+				<snowflake:update doc:name="Update" doc:id="eb2017b8-fdbe-4331-8b77-9128f021fd97" config-ref="Snowflake_Config">
+					<snowflake:sql ><![CDATA[UPDATE BANK_TRANSACTIONS set totalBalance = :totalBalance where custaccnum = :BankAccNum and bankName = :BankName;]]></snowflake:sql>
+					<snowflake:input-parameters ><![CDATA[#[{
+	"BankAccNum": payload.CUSTACCNUM[0],
+	"BankName": payload.BANKNAME[0],
+	"totalBalance": payload.TOTALBALANCE[0] + vars.InpAmount
+}]]]></snowflake:input-parameters>
+				</snowflake:update>
+				<ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "status": "Amount deposit successfully done for the Account Number " ++ vars.accountNumber
+} as Object {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="db06027d-d1cd-486e-a4ef-9ec823febd0c" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Status": "Please check your Account Number, It is Incorrect"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+    </flow>
+	
+	</mule>
